@@ -1,107 +1,137 @@
 import { Component } from 'react';
+import axios from 'axios';
 import './App.scss';
 
 class App extends Component {
 
     state = {
-        expression: [],
-        cursorPosition: 0
+        expression: ['|'],
+        result: undefined
     }
 
     updateExpression = (value) => {
-        console.log('click', value);
-        this.setState((state) => {
 
-            const newExpression = [...this.state.expression];
-            const cursorIndex = newExpression.findIndex(x => x === '|');
+        const { expression } = this.state;
+        const cursorIndexInArray = expression.findIndex(x => x === '|');
+        const newExpression = [...expression];
 
-            console.log('cursorIndex', cursorIndex);
+        newExpression.splice(cursorIndexInArray, 1);
+        newExpression.splice(cursorIndexInArray, 0, ...[value, '|']);
 
-            if (cursorIndex >= 0) {
-                newExpression.splice(cursorIndex, 1);
-            }
-
-            const calcPosition = newExpression.length + state.cursorPosition;
-
-            console.log('calcPosition', calcPosition);
-
-            if (calcPosition === 0) {
-                newExpression.splice(calcPosition, 0, ...['|', value]);
-            } else {
-                newExpression.splice(calcPosition, 0, ...[value, '|']);
-            }
-
-
+        this.setState(state => {
             return {
+                ...state,
                 expression: newExpression
             }
-
         });
     }
 
     moveCursor = (direction) => {
 
-        const {expression, cursorPosition} = this.state;
+        const { expression } = this.state;
+        const cursorIndexInArray = expression.findIndex(x => x === '|');
 
-        // if the expression is empty, or the cursor is at position 0 when we click 'right', stop here
-        if (!expression.length || direction === 'right' && cursorPosition === 0 || (expression.length - 1) + cursorPosition === 0) return;
+        this.setState(state => {
+            const newCursorIndexInArray = direction === 'left' ? cursorIndexInArray - 1 : cursorIndexInArray + 1;
+            const newExpression = [...expression];
 
-        console.log('tu sam');
-
-        this.setState((state) => {
-            const newCursorPosition = direction === 'left' ? state.cursorPosition - 1 : state.cursorPosition + 1
-            const oldCursorIndex = state.expression.findIndex(x => x === '|');
-            const newExpression = [...state.expression];
-            newExpression.splice(oldCursorIndex, 1);
-            const newCursorIndex = newExpression.length + newCursorPosition;
-            newExpression.splice(newCursorIndex, 0, '|');
-
-
-            console.log('oldCursorIndex', oldCursorIndex);
-            console.log('newCursorIndex', newCursorIndex);
-            console.log('newExpression.length', newExpression.length);
+            newExpression.splice(cursorIndexInArray, 1);
+            newExpression.splice(newCursorIndexInArray, 0, '|');
 
             return {
-                expression: newExpression,
-                cursorPosition: newCursorPosition,
+                ...state,
+                expression: newExpression
             }
 
         });
 
     }
 
+    calculateResult = () => {
+
+        let cleanExpression = [...this.state.expression];
+        const cursorIndex = cleanExpression.findIndex(x => x === '|');
+        const _this = this;
+
+        cleanExpression.splice(cursorIndex, 1);
+        cleanExpression = cleanExpression.join('');
+
+        axios.post('http://api.mathjs.org/v4/', {
+            expr: cleanExpression,
+            precision: 2
+        })
+        .then(function (response) {
+            _this.setState((state) => {
+                return {
+                    ...state,
+                    result: response.data.result
+                }
+            })
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
+    }
+
+    resetExpression = () => {
+
+        this.setState({
+            expression: ['|'],
+            result: undefined
+        });
+
+    }
+
     render () {
+
+        const resultMarkup = () => {
+            let result = this.state.result;
+
+            if (result) {
+                return (
+                    <span> ={ result } </span>
+                );
+            }
+        };
+
+
         return (
             <div className="App">
 
                 <div className="calculator">
 
                     <div className="calculator__screen">
-                        { this.state.expression.map((char, index) => {
-                            return  <span key={index}>{ char }</span>
-                        }) }
+                        <span className="calculator__expression">
+                            { this.state.expression.map((char, index) => {
+                                return  <span key={index}>{ char }</span>
+                            }) }
+                        </span>
+                        <span className="calculator__result">
+                            { resultMarkup() }
+                        </span>
                     </div>
 
-                    <div className="calculator__field calculator__field--add">+</div>
-                    <div className="calculator__field calculator__field--subtract">-</div>
-                    <div className="calculator__field calculator__field--multiply">*</div>
-                    <div className="calculator__field calculator__field--divide">/</div>
+                    <div className="calculator__field calculator__field--add" onClick={() => this.updateExpression('+')}>+</div>
+                    <div className="calculator__field calculator__field--subtract" onClick={() => this.updateExpression('-')}>-</div>
+                    <div className="calculator__field calculator__field--multiply" onClick={() => this.updateExpression('*')}>*</div>
+                    <div className="calculator__field calculator__field--divide" onClick={() => this.updateExpression('/')}>/</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(1)}>1</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(2)}>2</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(3)}>3</div>
-                    <div className="calculator__field calculator__field--open_bracket">(</div>
+                    <div className="calculator__field calculator__field--open_bracket" onClick={() => this.updateExpression('(')}>(</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(4)}>4</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(5)}>5</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(6)}>6</div>
-                    <div className="calculator__field calculator__field--close_bracket">)</div>
+                    <div className="calculator__field calculator__field--close_bracket" onClick={() => this.updateExpression(')')}>)</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(7)}>7</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(8)}>8</div>
                     <div className="calculator__field" onClick={() => this.updateExpression(9)}>9</div>
-                    <div className="calculator__field calculator__field--equals"> = </div>
+                    <div className="calculator__field calculator__field--equals" onClick={this.calculateResult}> = </div>
                     <div className="calculator__field calculator__field--move_left" onClick={() => this.moveCursor('left')}> &lt; </div>
                     <div className="calculator__field" onClick={() => this.updateExpression(0)}>0</div>
                     <div className="calculator__field calculator__field--move_right" onClick={() => this.moveCursor('right')}> &gt; </div>
-                    <div className="calculator__field calculator__field--clear"> C </div>
+                    <div className="calculator__field calculator__field--clear" onClick={() => this.resetExpression()}> C </div>
 
                 </div>
 
