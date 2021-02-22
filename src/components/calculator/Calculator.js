@@ -56,7 +56,7 @@ class Calculator extends Component {
         cleanExpression.splice(cursorIndex, 1);
         cleanExpression = cleanExpression.join('');
 
-        axios.post('http://api.mathjs.org/v4/', {
+        axios.post('https://api.mathjs.org/v4/', {
             expr: cleanExpression,
             precision: 2
         })
